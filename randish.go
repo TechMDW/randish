@@ -116,7 +116,6 @@ func Seed() int64 {
 	wd, _ := os.Getwd()
 	cpus := runtime.NumCPU()
 	cnt, file, line, _ := getExternalCaller(&blacklist)
-	fmt.Println("cnt: ", cnt, " file: ", file, " line: ", line)
 
 	// Get random number from crypto/rand.
 	var n int32
