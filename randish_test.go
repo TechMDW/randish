@@ -7,23 +7,23 @@ import (
 	"github.com/TechMDW/randish"
 )
 
-func TestRandish(t *testing.T) {
-	const numIterations = 200000
+func TestSeed(t *testing.T) {
+	const numIterations = 100000
 
-	duplicates := make(map[int64]bool)
+	duplicates := sync.Map{}
 
 	for i := 0; i < numIterations; i++ {
-		_, seed := randish.RandTest()
-
-		if duplicates[seed] {
+		seed := randish.Seed()
+		_, loaded := duplicates.LoadOrStore(seed, true)
+		if loaded {
 			t.Fatalf("Found duplicate number %d after %d iterations", seed, i)
 		}
-		duplicates[seed] = true
+
 	}
 }
 
-func TestRandishParallel(t *testing.T) {
-	const numIterations = 1000000
+func TestSeedParallel(t *testing.T) {
+	const numIterations = 2000000
 	const numWorkers = 50
 
 	duplicates := make(map[int64]bool)
@@ -40,7 +40,7 @@ func TestRandishParallel(t *testing.T) {
 				<-lim
 				wg.Done()
 			}()
-			_, seed := randish.RandTest()
+			seed := randish.Seed()
 
 			mu.Lock()
 			if duplicates[seed] {
@@ -53,10 +53,6 @@ func TestRandishParallel(t *testing.T) {
 	}
 
 	wg.Wait()
-
-	if t.Failed() {
-		t.Fatalf("Found duplicates after %d iterations", numIterations)
-	}
 }
 
 func TestDistribution(t *testing.T) {

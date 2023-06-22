@@ -3,7 +3,6 @@ package randish
 import (
 	randC "crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"hash/fnv"
 	"math/rand"
 	"os"
@@ -107,32 +106,27 @@ func RandTest() (randish *rand.Rand, seed int64) {
 // (such as the one in the math/rand package) to ensure that the generated sequence of numbers
 // is as random and unique as possible across different contexts and systems.
 func Seed() int64 {
-	t := time.Now().UnixNano()
-	randT := rand.New(rand.NewSource(t))
+	t := time.Now()
+	randT := rand.New(rand.NewSource(t.UnixNano()))
 	hostname, _ := os.Hostname()
 	pid := os.Getpid()
 	uid := os.Getuid()
 	gid := os.Getgid()
+	ps := os.Getpagesize()
 	wd, _ := os.Getwd()
 	cpus := runtime.NumCPU()
 	cnt, file, line, _ := getExternalCaller(&blacklist)
 
 	// Get random number from crypto/rand.
 	var n int32
-	err := binary.Read(randC.Reader, binary.BigEndian, &n)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
+	binary.Read(randC.Reader, binary.BigEndian, &n)
 
-	var seed int64 = t
-
-	envi := os.Environ()
-	for _, e := range envi {
-		randomMathOperation(randT, &seed, int64(stringToHash(e)))
-	}
+	var seed int64 = t.UnixNano()
 
 	// Get random number from crypto/rand
 	randomMathOperation(randT, &seed, int64(n))
+	// Page size
+	randomMathOperation(randT, &seed, int64(ps))
 	// cpu count
 	randomMathOperation(randT, &seed, int64(cpus))
 	// line number
@@ -149,10 +143,13 @@ func Seed() int64 {
 	randomMathOperation(randT, &seed, int64(gid))
 	// Get the current working directory
 	randomMathOperation(randT, &seed, int64(stringToHash(wd)))
+	// Time to execute Seed
+	randomMathOperation(randT, &seed, int64(time.Since(t).Nanoseconds()))
 
 	return seed
 }
 
+// TODO: Maybe don't allow overflow?
 func randomMathOperation(rnd *rand.Rand, seed *int64, val int64) {
 	switch rnd.Intn(3) {
 	case 0:
@@ -185,14 +182,14 @@ func getExternalCaller(blacklist *[]string) (uintptr, string, int, bool) {
 		// Check if the file belongs to the current package or the ignore list.
 		// This is a simple check and may not always work...
 		// TODO: Find a better way to check if the file belongs to the current package.
-		if !strings.Contains(file, "randish") && !inIgnoreList(file, blacklist) {
+		if !strings.Contains(file, "randish") && !inBlacklist(file, blacklist) {
 			return pc, file, line, ok
 		}
 	}
 }
 
-// inIgnoreList checks if the given file is in the ignore list.
-func inIgnoreList(file string, blacklist *[]string) bool {
+// inBlacklist checks if the given file is in the blacklist.
+func inBlacklist(file string, blacklist *[]string) bool {
 	for _, ignoreFile := range *blacklist {
 		if strings.Contains(file, ignoreFile) {
 			return true

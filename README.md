@@ -2,6 +2,8 @@
 
 `Randish` is a Go package that provides pseudo-random number generators which are unique and thread-safe.
 
+Do not use this for cryptography! If you need a package for that purpose, please use the `crypto/rand` package instead.
+
 ## Features
 
 - `Rand()`: Generates a new pseudo-random number generator that is initialized with a unique seed value.
